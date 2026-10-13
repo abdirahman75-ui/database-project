@@ -1,0 +1,53 @@
+{
+  "name": "consulease",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ConsulEase citizen portal and consular staff dashboard",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "prisma generate && next build",
+    "start": "next start --hostname 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "db:start": "node --env-file=.env scripts/database.mjs",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts",
+    "setup": "node scripts/setup.mjs",
+    "test:api": "tsx --test tests/api.test.ts",
+    "test:e2e": "playwright test",
+    "test": "npm run test:api && npm run test:e2e",
+    "postinstall": "prisma generate"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.2"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "6.19.3",
+    "@prisma/client": "6.19.3",
+    "lucide-react": "1.56.0",
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "embedded-postgres": "17.10.0-beta.17",
+    "pg": "^8.16.0",
+    "prettier": "3.9.10",
+    "prisma": "6.19.3",
+    "tailwindcss": "4.3.3",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

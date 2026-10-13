@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CITIZEN
+  OFFICER
+  ADMIN
+}
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  NEEDS_INFO
+  APPOINTMENT_REQUIRED
+  APPROVED
+  READY_FOR_COLLECTION
+  COMPLETED
+  REJECTED
+}
+enum DocumentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+enum AppointmentStatus {
+  BOOKED
+  CANCELLED
+  CHECKED_IN
+  COMPLETED
+}
+enum PaymentStatus {
+  PAID
+  WAIVED
+}
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+}
+
+model User {
+  id             String @id @default(cuid())
+  name           String
+  email          String @unique
+  passwordHash   String
+  role           Role @default(CITIZEN)
+  active         Boolean @default(true)
+  phone          String @default("")
+  passportNumber String @default("")
+  nationality    String @default("")
+  dateOfBirth    String @default("")
+  address        String @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  sessions       Session[]
+  documents      Document[]
+  applications   Application[]
+  notifications  Notification[]
+}
+
+model Session {
+  id        String @id @default(cuid())
+  tokenHash String @unique
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([userId])
+}
+
+model Service {
+  id                  String @id @default(cuid())
+  code                String @unique
+  name                String
+  description         String
+  standardFee         Int @default(0)
+  priorityFee         Int @default(0)
+  currency            String @default("MYR")
+  requirements        Json
+  eligibility         Json
+  procedures          Json
+  requiresAppointment Boolean @default(false)
+  requiresIdentity    Boolean @default(false)
+  priorityAllowed     Boolean @default(true)
+  active              Boolean @default(true)
+  applicationEnabled  Boolean @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  applications        Application[]
+}
+
+model Document {
+  id           String @id @default(cuid())
+  userId       String
+  user         User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  name         String
+  category     String
+  mimeType     String
+  size         Int
+  storageKey   String @unique
+  status       DocumentStatus @default(PENDING)
+  remark       String @default("")
+  verifiedBy   String?
+  createdAt    DateTime @default(now())
+  applications ApplicationDocument[]
+  @@index([userId])
+}
+
+model Application {
+  id               String @id @default(cuid())
+  reference        String @unique
+  userId           String
+  user             User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  serviceId        String
+  service          Service @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  status           ApplicationStatus @default(DRAFT)
+  priority         Boolean @default(false)
+  details          Json
+  identityVerified Boolean @default(false)
+  feeAmount        Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  submittedAt      DateTime?
+  documents        ApplicationDocument[]
+  history          ApplicationHistory[]
+  appointments     Appointment[]
+  payments         Payment[]
+  @@index([userId, status])
+  @@index([status, priority, submittedAt])
+}
+
+model ApplicationDocument {
+  applicationId String
+  documentId    String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  @@id([applicationId, documentId])
+}
+
+model ApplicationHistory {
+  id            String @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fromStatus    ApplicationStatus?
+  toStatus      ApplicationStatus
+  remark        String @default("")
+  actorId       String
+  actorName     String
+  createdAt     DateTime @default(now())
+  @@index([applicationId, createdAt])
+}
+
+model Slot {
+  id           String @id @default(cuid())
+  startsAt     DateTime @unique
+  endsAt       DateTime
+  capacity     Int @default(4)
+  purpose      String @default("Consular services")
+  active       Boolean @default(true)
+  appointments Appointment[]
+}
+
+model Appointment {
+  id            String @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  slotId        String
+  slot          Slot @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  status        AppointmentStatus @default(BOOKED)
+  queueNumber   Int @unique @default(autoincrement())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([slotId, status])
+  @@index([applicationId, status])
+}
+
+model Payment {
+  id            String @id @default(cuid())
+  applicationId String @unique
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  amount        Int
+  currency      String @default("MYR")
+  method        PaymentMethod
+  status        PaymentStatus
+  receiptNumber String @unique
+  reference     String @default("")
+  recordedBy    String
+  createdAt     DateTime @default(now())
+  @@index([applicationId])
+}
+
+model Notification {
+  id        String @id @default(cuid())
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  read      Boolean @default(false)
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+}
+
+model Announcement {
+  id        String @id @default(cuid())
+  title     String
+  body      String
+  published Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String @id @default(cuid())
+  actorId    String
+  action     String
+  entityType String
+  entityId   String
+  details    Json
+  createdAt  DateTime @default(now())
+  @@index([createdAt])
+}
