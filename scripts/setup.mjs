@@ -1,7 +1,11 @@
 import { existsSync, mkdirSync, writeFileSync, openSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
 import { Client } from 'pg';
+
+const require = createRequire(import.meta.url);
 
 mkdirSync('.data', { recursive: true, mode: 0o700 });
 if (!existsSync('.env')) {
@@ -54,17 +58,34 @@ if (!(await ready())) {
       'Local database did not start. Inspect .data/database.log.',
     );
 }
-for (const args of [
-  ['prisma', 'generate'],
-  ['prisma', 'migrate', 'deploy'],
-  ['tsx', 'prisma/seed.ts'],
+// Invoke each package's JavaScript entry point with Node. Launching npx.cmd
+// directly fails on Windows, and using a shell would add quoting hazards.
+for (const [packageName, binName, args] of [
+  ['prisma', 'prisma', ['generate']],
+  ['prisma', 'prisma', ['migrate', 'deploy']],
+  ['tsx', 'tsx', ['prisma/seed.ts']],
 ]) {
+  const manifestPath = require.resolve(`${packageName}/package.json`);
+  const manifest = require(manifestPath);
+  const entry =
+    typeof manifest.bin === 'string' ? manifest.bin : manifest.bin?.[binName];
+  if (!entry)
+    throw new Error(`Cannot find the ${binName} command. Run npm ci first.`);
   const result = spawnSync(
-    process.platform === 'win32' ? 'npx.cmd' : 'npx',
-    args,
+    process.execPath,
+    [resolve(dirname(manifestPath), entry), ...args],
     { stdio: 'inherit', env: process.env },
   );
-  if (result.status !== 0) process.exit(result.status || 1);
+  if (result.error) {
+    console.error(`Unable to start ${binName}: ${result.error.message}`);
+    process.exit(1);
+  }
+  if (result.status !== 0) {
+    console.error(
+      `${binName} ${args.join(' ')} failed${result.signal ? ` (${result.signal})` : ''}.`,
+    );
+    process.exit(result.status ?? 1);
+  }
 }
 console.log(
   'Database is ready; migrations applied and demo data available. Start the app with npm run dev.',

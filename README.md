@@ -17,6 +17,8 @@ npm run dev
 
 `setup` creates a private, ignored `.env` with a randomly generated local database password, starts a persistent database on port **54329**, applies checked-in migrations, and seeds fictional demonstration records. Re-running it preserves accounts, edits, payments, and uploaded files. It does not overwrite an existing `.env`. Open the app on port **3000** from a browser where the server is reachable. Cloud onboarding does not provide a public preview link.
 
+On Windows, open PowerShell in the folder containing `package.json` and use `npm.cmd ci`, `npm.cmd run setup`, and `npm.cmd run dev`. Wait for **Database is ready** before starting the web server. Setup launches the installed Prisma and TypeScript commands directly through Node, so it does not depend on Windows batch-file execution. If using an older downloaded copy that stops after creating configuration, run `npm.cmd run db:migrate` and `npm.cmd run db:seed` to complete database preparation, or update `scripts/setup.mjs` from this repository and rerun setup.
+
 To use an existing database, create `.env` from `.env.example` with your own `DATABASE_URL` before running setup. Required network hosts for a fresh npm/Prisma installation are `registry.npmjs.org` and `binaries.prisma.sh`. Downloads retain TLS and checksum verification.
 
 ## Demo accounts
